@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BookHub - Firebase Authentication</title>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: lightblue;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+            text-align: center;
+        }
+        h1, h2 { margin-bottom: 20px; }
+        select, input, button {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+        button {
+            background-color: violet;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover { background-color: pink; }
+        .toggle {
+            color: blue;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        /* Ensure only login or signup page is shown initially */
+        #signUpPage, #loginPage, #bookSelection, #bookDetails, #pdfUploadSection {
+            display: none;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #d0d0d0;
+        }
+        th {
+            background-color: #007bff;
+            color: white;
+        }
+        a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <img src="https://th.bing.com/th/id/OIP.JKEVCwC4zuOzLU7DFUzk_AHaHh?w=169&h=180&c=7&r=0&o=5&pid=1.7" alt="JNTUK Logo" width="100">
+        </div>
+
+        <!-- Sign Up Page -->
+        <div id="signUpPage">
+            <h1>Create Account</h1>
+            <input type="text" id="signUpUsername" placeholder="Username">
+            <input type="email" id="signUpEmail" placeholder="Email">
+            <input type="password" id="signUpPassword" placeholder="Password">
+            <button onclick="register()">Sign Up</button>
+            <p>Already have an account? <span class="toggle" onclick="showLogin()">Sign In</span></p>
+        </div>
+
+        <!-- Login Page -->
+        <div id="loginPage">
+            <h1>Sign In</h1>
+            <input type="email" id="loginEmail" placeholder="Email">
+            <input type="password" id="loginPassword" placeholder="Password">
+            <button onclick="login()">Sign In</button>
+            <p>Don't have an account? <span class="toggle" onclick="showSignUp()">Create one</span></p>
+        </div>
+
+        <!-- Book Selection Page -->
+        <div id="bookSelection">
+            <h2 id="welcomeMessage"></h2>
+            <h1>Select a Department</h1>
+            <select id="departmentsDropdown">
+                <option value="">-- Choose a Department --</option>
+                <option value="cse">CSE</option>
+                <option value="ece">ECE</option>
+                <option value="mech">MECH</option>
+                <option value="civil">CIVIL</option>
+                <option value="petro">PETRO</option>
+                <option value="eee">EEE</option>
+            </select>
+            <button onclick="openDepartmentPage()">View Books</button>
+            <button onclick="logout()">Logout</button>
+        </div>
+
+        <div id="bookDetails">
+            <h1>Book Details</h1>
+            <table id="booksTable">
+                <thead>
+                    <tr>
+                        <th>Book Name</th>
+                        <th>Subject</th>
+                        <th>Read</th>
+                        <th>Buy</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <button onclick="showPdfUploadSection()">Upload PDF</button>
+            <button onclick="toggleDepartmentSelection()">Go Back</button>
+        </div>
+
+        <div id="pdfUploadSection">
+            <h1>Upload Your PDF</h1>
+            <input type="file" id="pdfFileInput" accept="application/pdf">
+            <button onclick="submitPdf()">Submit</button>
+            <p id="uploadMessage"></p>
+            <button onclick="togglePdfUploadSection()">Go Back</button>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.0.0/firebase-auth-compat.js"></script>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBKI7jxwubqDvulzsfXdW3aewh5U6AjnT8",
+            authDomain: "mywork-efb18.firebaseapp.com",
+            projectId: "mywork-efb18",
+            storageBucket: "mywork-efb18.appspot.com",
+            messagingSenderId: "218319676261",
+            appId: "1:218319676261:web:f55dfc6f713082452d378c",
+            measurementId: "G-CLVFQYZHDK"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+
+        // Show Login Page (Hide Signup)
+        function showLogin() {
+            document.getElementById("signUpPage").style.display = "none";
+            document.getElementById("loginPage").style.display = "block";
+            document.getElementById("bookSelection").style.display = "none";
+            document.getElementById("bookDetails").style.display = "none";
+            document.getElementById("pdfUploadSection").style.display = "none";
+        }
+
+        // Show Signup Page (Hide Login)
+        function showSignUp() {
+            document.getElementById("loginPage").style.display = "none";
+            document.getElementById("signUpPage").style.display = "block";
+            document.getElementById("bookSelection").style.display = "none";
+            document.getElementById("bookDetails").style.display = "none";
+            document.getElementById("pdfUploadSection").style.display = "none";
+        }
+
+        // Register New User
+        function register() {
+            const email = document.getElementById("signUpEmail").value;
+            const password = document.getElementById("signUpPassword").value;
+
+            auth.createUserWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    alert("Account created successfully!");
+                    showLogin();
+                })
+                .catch((error) => {
+                    alert(error.message);
+                });
+        }
+
+        // Login Existing User
+        function login() {
+            const email = document.getElementById("loginEmail").value;
+            const password = document.getElementById("loginPassword").value;
+
+            auth.signInWithEmailAndPassword(email, password)
+                .then((userCredential) => {
+                    alert("Welcome back, " + userCredential.user.email + "!");
+                    document.getElementById("loginPage").style.display = "none";
+                    document.getElementById("bookSelection").style.display = "block";
+                    document.getElementById("welcomeMessage").innerText = "Hello, " + userCredential.user.email + "!";
+                })
+                .catch((error) => {
+                    alert(error.message);
+                });
+        }
+
+        // Logout User
+        function logout() {
+            auth.signOut().then(() => {
+                alert("Logged out successfully!");
+                document.getElementById("bookSelection").style.display = "none";
+                document.getElementById("loginPage").style.display = "block";
+            }).catch((error) => {
+                alert(error.message);
+            });
+        }
+
+        function openDepartmentPage() {
+            const selectedDept = document.getElementById("departmentsDropdown").value;
+            if (selectedDept) {
+                document.getElementById("bookSelection").style.display = "none";
+                document.getElementById("bookDetails").style.display = "block";
+                const booksTable = document.querySelector("#booksTable tbody");
+                booksTable.innerHTML = "";
+                
+                const books = {
+                    "ece": [
+                        {"subject": "Analog communication", "name": "Modern Digital And Analog Communications Systems", "link": "https://drive.google.com/file/d/0B6mCWggVFhEGYkxvUHRfYXBSU0E/view?resourcekey=0-asF9Gip_jASvxdag6Ks-Qg","Hardcopy": "https://www.amazon.in/Books-B-P-Lathi/s?rh=n%3A976389031%2Cp_27%3AB.P.%2BLathi"},
+                        {"subject": "EMTL", "name": "EMTL by sadiku", "link": "https://docs.google.com/file/d/0B6LN8LD0xzNAcnFoZHdEN1EzLVU/view?pli=1&resourcekey=0-Y-mrnot4rH37V5ykIWROqA","Hardcopy": "https://www.amazon.in/s?k=EMTL+SADIKU&i=stripbooks&crid=VOB0T9ZRTJUH&sprefix=emtl+sadik%2Cstripbooks%2C211&ref=nb_sb_noss"},
+                        {"subject": "CONTROL SYSTEM", "name": "Modren control enginneering ogata", "link": "https://drive.google.com/file/d/0BwgDh8uQH7QncVFDN1Y0U0hrTWM/view?resourcekey=0-rBOMTGhgfkC6MNvIC9cB-g","Hardcopy": "https://www.amazon.in/Modern-Control-Engineering-Ogata/dp/9332550166"}
+                    ],
+                    "cse": [
+                        {"subject": "DSA", "name": "Data Structures And Algorithms By Narasimha Karumanchi", "link":"https://drive.google.com/file/d/1QrvXQpiMOFM-n8g6H6iNQ-e7P6K5HhiZ/preview","Hardcopy": "https://www.amazon.in/Data-Structures-Algorithms-Made-Easy/dp/1468108867"},
+                        {"subject": "Computer-Organization ", "name": "Computer-Organization-by-Carl-Hamacher-5th.pdf", "link": "https://drive.google.com/file/d/1dLgNgshADpSqCkiWhpa5tS5H6otYTbaY/view","Hardcopy": "https://www.mypustak.com/"},
+                        {"subject": "CSE Subject 3", "name": "CSE Book 3", "link": "https://example.com/book3"}
+                    ],
+                    "eee": [
+                        {"subject": "EEE Subject 1", "name": "EEE Book 1", "link": "https://example.com/book1"},
+                        {"subject": "EEE Subject 2", "name": "EEE Book 2", "link": "https://example.com/book2"},
+                        {"subject": "EEE Subject 3", "name": "EEE Book 3", "link": "https://example.com/book3"}
+                    ],
+                    "mech": [
+                        {"subject": "MECH Subject 1", "name": "MECH Book 1", "link": "https://example.com/book1"},
+                        {"subject": "MECH Subject 2", "name": "MECH Book 2", "link": "https://example.com/book2"},
+                        {"subject": "MECH Subject 3", "name": "MECH Book 3", "link": "https://example.com/book3"}
+                    ],
+                    "civil": [
+                        {"subject": "CIVIL Subject 1", "name": "CIVIL Book 1", "link": "https://example.com/book1"},
+                        {"subject": "CIVIL Subject 2", "name": "CIVIL Book 2", "link": "https://example.com/book2"},
+                        {"subject": "CIVIL Subject 3", "name": "CIVIL Book 3", "link": "https://example.com/book3"}
+                    ],
+                    "petro": [
+                        {"subject": "PETRO Subject 1", "name": "PETRO Book 1", "link": "https://example.com/book1"},
+                        {"subject": "PETRO Subject 2", "name": "PETRO Book 2", "link": "https://example.com/book2"},
+                        {"subject": "PETRO Subject 3", "name": "PETRO Book 3", "link": "https://example.com/book3"}
+                    ]
+                }[selectedDept] || [];
+                
+                books.forEach(book => {
+                    const row = booksTable.insertRow();
+                    row.insertCell(0).innerText = book.name;
+                    row.insertCell(1).innerText = book.subject;
+                    row.insertCell(2).innerHTML = `<a href="${book.link}" target="_blank">Read</a>`;
+                    row.insertCell(3).innerHTML = `<a href="${book.Hardcopy}" target="_blank">Buy</a>`;
+                });
+            } else {
+                alert("Please select a department first!");
+            }
+        }
+
+        function showPdfUploadSection() {
+            document.getElementById("pdfUploadSection").style.display = "block";
+            document.getElementById("bookDetails").style.display = "none";
+        }
+
+        function togglePdfUploadSection() {
+            document.getElementById("pdfUploadSection").style.display = "none";
+            document.getElementById("bookDetails").style.display = "block";
+        }
+
+        function toggleDepartmentSelection() {
+            document.getElementById("bookDetails").style.display = "none";
+            document.getElementById("bookSelection").style.display = "block";
+        }
+
+        function submitPdf() {
+            const fileInput = document.getElementById("pdfFileInput");
+            const file = fileInput.files[0];
+            const uploadMessage = document.getElementById("uploadMessage");
+            
+            if (file && file.type === "application/pdf") {
+                uploadMessage.style.color = "green";
+                uploadMessage.innerText = `File "${file.name}" uploaded successfully!`;
+                fileInput.value = ""; // Clear the file input
+            } else {
+                uploadMessage.style.color = "red";
+                uploadMessage.innerText = "Please upload a valid PDF file.";
+            }
+        }
+
+        // Auto-check if user is logged in
+        auth.onAuthStateChanged((user) => {
+            if (user) {
+                document.getElementById("loginPage").style.display = "none";
+                document.getElementById("bookSelection").style.display = "block";
+                document.getElementById("welcomeMessage").innerText = "Hello, " + user.email + "!";
+            } else {
+                document.getElementById("bookSelection").style.display = "none";
+                document.getElementById("loginPage").style.display = "block";
+            }
+        });
+
+        // Ensure Sign In Page is Shown Initially
+        document.addEventListener("DOMContentLoaded", function() {
+            showLogin(); // Default page is login
+        });
+    </script>
+</body>
+</html>
